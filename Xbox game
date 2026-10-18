@@ -1,0 +1,72 @@
+-- Xbox game Script : Fly Function
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- ตั้งค่าตัวแปร
+local flying = false
+local flySpeed = 50 -- ความเร็วในการบิน (สามารถปรับเปลี่ยนตรงนี้ได้)
+local bodyVelocity, bodyGyro
+
+-- ฟังก์ชัน เริ่มบิน / หยุดบิน
+local function toggleFly()
+	flying = not flying
+	
+	if flying then
+		-- สร้าง Gyro เพื่อควบคุมทิศทางการมอง
+		bodyGyro = Instance.new("BodyGyro")
+		bodyGyro.P = 9e4
+		bodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+		bodyGyro.cframe = RootPart.CFrame
+		bodyGyro.Parent = RootPart
+		
+		-- สร้าง Velocity เพื่อควบคุมการเคลื่อนที่
+		bodyVelocity = Instance.new("BodyVelocity")
+		bodyVelocity.velocity = Vector3.new(0, 0, 0)
+		bodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
+		bodyVelocity.Parent = RootPart
+		
+		Humanoid.PlatformStand = true
+		print("Xbox game: เริ่มต้นการบิน (Fly: ON)")
+	else
+		if bodyGyro then bodyGyro:Destroy() end
+		if bodyVelocity then bodyVelocity:Destroy() end
+		Humanoid.PlatformStand = false
+		print("Xbox game: ปิดการบิน (Fly: OFF)")
+	end
+end
+
+-- อัปเดตการเคลื่อนที่ขณะบิน
+RunService.RenderStepped:Connect(function()
+	if flying and RootPart and bodyGyro and bodyVelocity then
+		local camera = workspace.CurrentCamera
+		bodyGyro.cframe = camera.CFrame
+		
+		local moveDir = Vector3.new()
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+		
+		if moveDir.Magnitude > 0 then
+			bodyVelocity.velocity = moveDir.Unit * flySpeed
+		else
+			bodyVelocity.velocity = Vector3.new(0, 0, 0)
+		end
+	end
+end)
+
+-- กดปุ่ม 'E' เพื่อเปิด/ปิดการบิน
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.E then
+		toggleFly()
+	end
+end)
